@@ -1,8 +1,9 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path')
 const request = require('request');
 
-const spawn = require('child_process').spawn
+let cp = require('child_process')
 
 const url = "https://samplefocus.com/collections/claps-pack"
 const name = url.substring(url.lastIndexOf('/') + 1);
@@ -22,15 +23,24 @@ const name = url.substring(url.lastIndexOf('/') + 1);
     let cpt = 1;
     fs.mkdir('./' + name, function (err) {
         for (elem of elems) {
+            let writeStream = fs.createWriteStream('./' + name + '/' + cpt + '.mp3')
             request.get(elem)
                 .on('error', function (error) {
                     console.error(error)
                 })
-                .pipe(fs.createWriteStream('./' + name + '/' + cpt + '.mp3'))
+                .pipe(writeStream);
+            convert(writeStream, cpt, name);
             cpt++;
         }
-        spawn('env/Scripts/python.exe',["converter.py", name]);
     })
 
-
 })();
+
+function convert(writeStream, cpt, name){
+    writeStream.on('finish', function(){
+        let src = path.join(__dirname, name, cpt + '.mp3');
+        let dst = path.join(__dirname, name, cpt + '.wav');
+        let p = cp.spawn('ffmpeg', ['-i', src, dst]);
+        p.stderr.pipe(process.stdout)
+    })
+}
